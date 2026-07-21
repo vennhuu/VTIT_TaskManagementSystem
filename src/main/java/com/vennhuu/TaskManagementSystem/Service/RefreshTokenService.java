@@ -1,6 +1,6 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,10 +42,10 @@ public class RefreshTokenService {
 
         refreshToken.setDevice(device);
 
-        refreshToken.setCreatedAt(LocalDateTime.now());
+        refreshToken.setCreatedAt(Instant.now());
 
         refreshToken.setExpiredAt(
-                LocalDateTime.now()
+                Instant.now()
                         .plusSeconds(refreshTokenExpiration)
         );
 
@@ -81,9 +81,9 @@ public class RefreshTokenService {
 
         refreshToken.setToken(token);
         refreshToken.setUser(user);
-        refreshToken.setCreatedAt(LocalDateTime.now());
+        refreshToken.setCreatedAt(Instant.now());
         refreshToken.setExpiredAt(
-                LocalDateTime.now().plusSeconds(refreshTokenExpiration)
+                Instant.now().plusSeconds(refreshTokenExpiration)
         );
 
         refreshTokenRepository.save(refreshToken);
