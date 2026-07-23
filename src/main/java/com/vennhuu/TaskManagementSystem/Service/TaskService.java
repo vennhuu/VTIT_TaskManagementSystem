@@ -33,8 +33,8 @@ public class TaskService {
             TaskRepository taskRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository) {
-
+            ProjectMemberRepository projectMemberRepository
+    ) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -57,35 +57,27 @@ public class TaskService {
 
     public TaskResponse createTask(Long projectId, TaskReq req) {
 
-        Project project = projectRepository.findById(projectId)
+        Project project = this.projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project không tồn tại"));
 
         User currentUser = getCurrentUser();
 
-        ProjectMember currentMember =
-                projectMemberRepository.findByProjectIdAndUserId(
-                        projectId,
-                        currentUser.getId());
+        ProjectMember currentMember = this.projectMemberRepository.findByProjectIdAndUserId(projectId, currentUser.getId());
 
         if (currentMember == null) {
             throw new RuntimeException("Bạn không thuộc project");
         }
 
-        User assignee = userRepository.findById(req.getAssigneeId())
+        User assignee = this.userRepository.findById(req.getAssigneeId())
                 .orElseThrow(() -> new RuntimeException("Assignee không tồn tại"));
 
-        boolean assigneeInProject =
-                projectMemberRepository.existsByProjectIdAndUserId(
-                        projectId,
-                        assignee.getId());
+        boolean assigneeInProject = this.projectMemberRepository.existsByProjectIdAndUserId(projectId, assignee.getId());
 
         if (!assigneeInProject) {
             throw new RuntimeException("Assignee không thuộc project");
         }
 
-        if (req.getDueDate() != null &&
-                req.getDueDate().isBefore(Instant.now())) {
-
+        if (req.getDueDate() != null && req.getDueDate().isBefore(Instant.now())) {
             throw new RuntimeException("DueDate không hợp lệ");
         }
 
@@ -93,15 +85,10 @@ public class TaskService {
 
         task.setTitle(req.getTitle());
         task.setDescription(req.getDescription());
-
         task.setProject(project);
-
         task.setCreatedBy(currentUser);
-
         task.setAssignee(assignee);
-
         task.setDueDate(req.getDueDate());
-
         task.setStatus(TaskStatus.TODO);
 
         Task saved = taskRepository.save(task);
@@ -109,9 +96,6 @@ public class TaskService {
         return convert(saved);
     }
 
-    /**
-     * Get all task
-     */
     public List<TaskResponse> getAllTask(Long projectId) {
 
         return taskRepository.findByProjectId(projectId)
@@ -120,9 +104,6 @@ public class TaskService {
                 .toList();
     }
 
-    /**
-     * Get detail
-     */
     public TaskResponse getTask(Long projectId, Long taskId) {
 
         Task task = taskRepository.findById(taskId)
@@ -135,9 +116,6 @@ public class TaskService {
         return convert(task);
     }
 
-    /**
-     * Update task
-     */
     public TaskResponse updateTask(Long projectId, Long taskId, TaskReq req) {
 
         Task task = taskRepository.findById(taskId)
@@ -169,9 +147,6 @@ public class TaskService {
         return convert(saved);
     }
 
-    /**
-     * Update status
-     */
     public TaskResponse updateStatus(
             Long projectId,
             Long taskId,
@@ -189,9 +164,6 @@ public class TaskService {
         return convert(taskRepository.save(task));
     }
 
-    /**
-     * Delete task
-     */
     public void deleteTask(Long projectId, Long taskId) {
 
         Task task = taskRepository.findById(taskId)
@@ -204,9 +176,6 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    /**
-     * Convert DTO
-     */
     private TaskResponse convert(Task task) {
 
         TaskResponse res = new TaskResponse();
@@ -214,18 +183,12 @@ public class TaskService {
         res.setId(task.getId());
         res.setTitle(task.getTitle());
         res.setDescription(task.getDescription());
-
         res.setStatus(task.getStatus());
-
         res.setDueDate(task.getDueDate());
-
         res.setCreatedAt(task.getCreatedAt());
-
         res.setProjectId(task.getProject().getId());
-
         res.setCreatedById(task.getCreatedBy().getId());
         res.setCreatedByName(task.getCreatedBy().getFullName());
-
         res.setAssigneeId(task.getAssignee().getId());
         res.setAssigneeName(task.getAssignee().getFullName());
 

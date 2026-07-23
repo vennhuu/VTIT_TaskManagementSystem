@@ -1,7 +1,7 @@
 package com.vennhuu.TaskManagementSystem.Controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.turkraft.springfilter.boot.Filter;
+import com.vennhuu.TaskManagementSystem.Entity.Project;
 import com.vennhuu.TaskManagementSystem.Entity.req.project.ProjectReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.project.ProjectResponse;
 import com.vennhuu.TaskManagementSystem.Service.ProjectService;
 import com.vennhuu.TaskManagementSystem.Utils.annotation.APIMessage;
@@ -32,8 +35,9 @@ public class ProjectController {
 
     @GetMapping("")
     @APIMessage("Get all my projects")
-    public ResponseEntity<List<ProjectResponse>> getMyProjects() {
-        return ResponseEntity.ok(this.projectService.getMyProjects());
+    public ResponseEntity<ResultPaginationDTO> getMyProjects(@Filter Specification<Project> spec,
+            Pageable pageable) {
+        return ResponseEntity.ok(this.projectService.getMyProjects(spec, pageable));
     }
 
     @GetMapping("/{id}")

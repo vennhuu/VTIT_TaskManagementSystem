@@ -1,13 +1,18 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.vennhuu.TaskManagementSystem.Entity.Project;
 import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.project.ProjectReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.project.ProjectResponse;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
@@ -39,13 +44,27 @@ public class ProjectService {
         return userRepository.findByEmail(email);
     }
 
-    public List<ProjectResponse> getMyProjects() {
+    public ResultPaginationDTO getMyProjects(Specification<Project> spec, Pageable pageable) {
+        Page<Project> pageProject = this.projectRepository.findAll(spec, pageable) ;
+        ResultPaginationDTO rs = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
-        User currentUser = getCurrentUser();
+        mt.setCurrentPage(pageable.getPageNumber() + 1);
+        mt.setPageSize(pageable.getPageSize());
 
-        List<Project> projects = this.projectRepository.findDistinctByMembersUserId(currentUser.getId());
+        mt.setTotalPages(pageProject.getTotalPages());
+        mt.setTotalElements(pageProject.getTotalElements());
 
-        return projects.stream().map(this::toResponse).toList();
+        rs.setMeta(mt);
+
+        // remove sensitive data
+        List<ProjectResponse> listProject = pageProject.getContent()
+                .stream().map(item -> this.toResponse(item))
+                .collect(Collectors.toList());
+
+        rs.setResult(listProject);
+
+        return rs;
     }
 
     public Project save(Project project) {

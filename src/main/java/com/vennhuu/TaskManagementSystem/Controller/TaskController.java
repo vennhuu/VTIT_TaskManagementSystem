@@ -35,18 +35,14 @@ public class TaskController {
 
     @PostMapping
     @APIMessage("Create task")
-    public ResponseEntity<TaskResponse> createTask(
-            @PathVariable Long projectId,
-            @Valid @RequestBody TaskReq req) {
+    public ResponseEntity<TaskResponse> createTask(@PathVariable Long projectId, @Valid @RequestBody TaskReq req) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(taskService.createTask(projectId, req));
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(projectId, req));
     }
 
     @GetMapping
     @APIMessage("Get all task")
-    public ResponseEntity<List<TaskResponse>> getAllTask(
-            @PathVariable Long projectId) {
+    public ResponseEntity<List<TaskResponse>> getAllTask(@PathVariable Long projectId) {
 
         return ResponseEntity.ok(taskService.getAllTask(projectId));
     }
