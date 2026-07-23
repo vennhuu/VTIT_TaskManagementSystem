@@ -50,8 +50,9 @@ public class ProjectMemberService {
 
         User currentUser = getCurrentUser();
 
-        ProjectMember member = projectMemberRepository
-                .findByProjectIdAndUserId(projectId, currentUser.getId());
+        projectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Project không tồn tại"));
+
+        ProjectMember member = this.projectMemberRepository.findByProjectIdAndUserId(projectId, currentUser.getId());
 
         if (member == null) {
             throw new RuntimeException("Bạn không thuộc project này");
@@ -67,6 +68,20 @@ public class ProjectMemberService {
 
         // Kiểm tra project
         Project project = this.projectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Project không tồn tại"));
+
+
+        // kiểm tra role owner 
+        User ownerUser = this.getCurrentUser() ;
+
+        ProjectMember currentMember = this.projectMemberRepository.findByProjectIdAndUserId( projectId, ownerUser.getId());
+
+        if (currentMember == null) {
+            throw new RuntimeException("Bạn không thuộc project");
+        }
+
+        if (currentMember.getRole() != ProjectRole.OWNER) {
+            throw new RuntimeException("Chỉ OWNER mới được thêm thành viên");
+        }
 
         // Kiểm tra user
         User user = this.userRepository.findByEmail(req.getEmail());
@@ -108,15 +123,14 @@ public class ProjectMemberService {
         return response;
     }
 
-    public void deleteMember(Long projectId, Long memberId) {
+    public void deleteMember(Long projectId, Long userId) {
 
         checkOwner(projectId);
 
-        ProjectMember member = projectMemberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy member"));
+        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId);
 
-        if (!member.getProject().getId().equals(projectId)) {
-            throw new RuntimeException("Member không thuộc project này");
+        if (member == null) {
+            throw new RuntimeException("User không thuộc project");
         }
 
         if (member.getRole() == ProjectRole.OWNER) {
@@ -126,18 +140,14 @@ public class ProjectMemberService {
         projectMemberRepository.delete(member);
     }
 
-    public MemberResponse updateRoleMember(
-            Long projectId,
-            Long memberId,
-            MemberReq req) {
+    public MemberResponse updateRoleMember(Long projectId, Long userId, MemberReq req) {
 
         checkOwner(projectId);
 
-        ProjectMember member = projectMemberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy member"));
+        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId);
 
-        if (!member.getProject().getId().equals(projectId)) {
-            throw new RuntimeException("Member không thuộc project này");
+        if (member == null) {
+            throw new RuntimeException("User không thuộc project");
         }
 
         member.setRole(req.getRole());
