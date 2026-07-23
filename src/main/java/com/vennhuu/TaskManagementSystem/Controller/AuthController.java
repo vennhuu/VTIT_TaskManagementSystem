@@ -115,11 +115,7 @@ public class AuthController {
         // update user
         String device = request.getHeader("User-Agent");
 
-        this.refreshTokenService.updateUserToken(
-                refresh_token,
-                user.getEmail(),
-                device
-        );
+        this.refreshTokenService.updateUserToken(refresh_token, user.getEmail(), device);
 
         // set cookies
         ResponseCookie resCookies = ResponseCookie

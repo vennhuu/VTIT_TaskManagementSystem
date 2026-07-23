@@ -10,7 +10,6 @@ import com.vennhuu.TaskManagementSystem.Entity.Project;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpecificationExecutor<Project> {
-    List<Project> findByUserId(Long userId);
 
     List<Project> findDistinctByMembersUserId(Long userId);
 }

@@ -49,7 +49,7 @@ public class ProjectService {
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
-        mt.setCurrentPage(pageable.getPageNumber() + 1);
+        mt.setCurrentPage(pageable.getPageNumber() + 1 );
         mt.setPageSize(pageable.getPageSize());
 
         mt.setTotalPages(pageProject.getTotalPages());
@@ -100,6 +100,8 @@ public class ProjectService {
 
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId( id, currentUser.getId() );
 
+        Project p = this.projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Khong tim thay project nay"));
+
         if (member == null || member.getRole() != ProjectRole.OWNER) {
             throw new RuntimeException("Chỉ có chủ sở hữu mới được phép cập nhật");
         }
@@ -120,6 +122,8 @@ public class ProjectService {
         User currentUser = getCurrentUser();
 
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId( id, currentUser.getId() );
+
+        Project p = this.projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Khong tim thay project nay"));
 
         if (member == null || member.getRole() != ProjectRole.OWNER) {
             throw new RuntimeException("Chỉ có chủ sở hữu mới được phép xóa");
