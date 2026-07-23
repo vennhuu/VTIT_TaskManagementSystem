@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.vennhuu.TaskManagementSystem.Entity.RefreshToken;
 import com.vennhuu.TaskManagementSystem.Entity.Role;
 import com.vennhuu.TaskManagementSystem.Entity.User;
-import com.vennhuu.TaskManagementSystem.Entity.req.UserReq;
-import com.vennhuu.TaskManagementSystem.Entity.res.ResLoginDTO;
-import com.vennhuu.TaskManagementSystem.Entity.res.UserResponse;
+import com.vennhuu.TaskManagementSystem.Entity.req.auth.LoginReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.auth.ResLoginDTO;
+import com.vennhuu.TaskManagementSystem.Entity.res.auth.UserResponse;
 import com.vennhuu.TaskManagementSystem.Service.RefreshTokenService;
 import com.vennhuu.TaskManagementSystem.Service.RoleService;
 import com.vennhuu.TaskManagementSystem.Service.UserService;
@@ -83,7 +83,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @APIMessage("Login")
-    public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody UserReq user, HttpServletRequest request) {
+    public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody LoginReq user, HttpServletRequest request) {
 
         // nạp input gồm email và password vào security
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword()) ;

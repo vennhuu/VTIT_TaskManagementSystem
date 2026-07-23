@@ -1,4 +1,4 @@
-package com.vennhuu.TaskManagementSystem.Entity.req;
+package com.vennhuu.TaskManagementSystem.Entity.req.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserReq {
+public class LoginReq {
 
     @NotBlank(message="Không được để trống email")
     private String email ;

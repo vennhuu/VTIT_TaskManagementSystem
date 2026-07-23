@@ -24,7 +24,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
 
 import com.nimbusds.jose.util.Base64;
-import com.vennhuu.TaskManagementSystem.Entity.res.ResLoginDTO;
+import com.vennhuu.TaskManagementSystem.Entity.res.auth.ResLoginDTO;
 
 @Service
 public class SecurityUtil {

@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.vennhuu.TaskManagementSystem.Entity.Role;
 import com.vennhuu.TaskManagementSystem.Entity.User;
-import com.vennhuu.TaskManagementSystem.Entity.res.UserResponse;
+import com.vennhuu.TaskManagementSystem.Entity.res.auth.UserResponse;
 import com.vennhuu.TaskManagementSystem.Repository.RoleRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
 

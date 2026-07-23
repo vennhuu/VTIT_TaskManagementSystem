@@ -1,4 +1,4 @@
-package com.vennhuu.TaskManagementSystem.Entity.res;
+package com.vennhuu.TaskManagementSystem.Entity.res.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
