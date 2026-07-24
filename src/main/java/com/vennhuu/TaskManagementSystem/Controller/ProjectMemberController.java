@@ -1,7 +1,7 @@
 package com.vennhuu.TaskManagementSystem.Controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.turkraft.springfilter.boot.Filter;
+import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.req.member.MemberReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.member.MemberResponse;
 import com.vennhuu.TaskManagementSystem.Service.ProjectMemberService;
 import com.vennhuu.TaskManagementSystem.Service.ProjectService;
@@ -66,10 +69,13 @@ public class ProjectMemberController {
 
     @GetMapping("/{projectId}/members")
     @APIMessage("Get all members")
-    public ResponseEntity<List<MemberResponse>> getAllMembers(
-            @PathVariable Long projectId) {
+    public ResponseEntity<ResultPaginationDTO> getAllMembers(
+            @PathVariable Long projectId,
+            @Filter Specification<ProjectMember> spec,
+            Pageable pageable
+        ) {
 
-        return ResponseEntity.ok(this.projectMemberService.getAllMembers(projectId));
+        return ResponseEntity.ok(this.projectMemberService.getAllMembers(projectId, spec, pageable));
     }
     
     

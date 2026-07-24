@@ -1,13 +1,18 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.vennhuu.TaskManagementSystem.Entity.Project;
 import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.member.MemberReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.member.MemberResponse;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
@@ -157,12 +162,26 @@ public class ProjectMemberService {
         return convertToMemberResponse(saved);
     }
     
-     public List<MemberResponse> getAllMembers(Long projectId) {
+     public ResultPaginationDTO getAllMembers(Long projectId, Specification<ProjectMember> spec, Pageable pageable) {
 
-        List<ProjectMember> members = this.projectMemberRepository.findByProjectId(projectId);
+        Project pro = this.projectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Project không tồn tại"));
 
-        return members.stream()
-                .map(this::convertToMemberResponse)
-                .toList();
+        Page<ProjectMember> pageMembers = this.projectMemberRepository.findAllByProjectId(projectId, spec, pageable);
+
+        ResultPaginationDTO res = new ResultPaginationDTO() ; 
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta() ;
+
+        meta.setCurrentPage(pageMembers.getNumber() + 1);
+        meta.setPageSize(pageMembers.getSize());
+        meta.setTotalElements(pageMembers.getTotalElements());
+        meta.setTotalPages(pageMembers.getTotalPages());
+
+        res.setMeta(meta);
+        List<MemberResponse> listMember = pageMembers.getContent()
+                .stream().map(item -> this.convertToMemberResponse(item))
+                .collect(Collectors.toList());
+
+        res.setResult(listMember);
+        return res ;
     }
 }
