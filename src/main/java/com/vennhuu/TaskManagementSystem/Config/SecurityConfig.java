@@ -52,7 +52,7 @@ public class SecurityConfig {
                     "/api/v1/auth/login",
                     "/api/v1/auth/register",
                     "/api/v1/auth/refresh",
-                    "/api/v1/auth/logout"
+                    "/api/v1/email/**"
                 ).permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()) // bảo vệ api = jwt

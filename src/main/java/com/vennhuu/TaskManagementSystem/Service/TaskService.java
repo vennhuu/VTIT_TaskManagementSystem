@@ -34,19 +34,22 @@ public class TaskService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ActivityLogService activityLogService ;
+    private final NotificationService notificationService;
 
     public TaskService(
             TaskRepository taskRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
             ProjectMemberRepository projectMemberRepository,
-            ActivityLogService activityLogService
+            ActivityLogService activityLogService,
+            NotificationService notificationService
     ) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.activityLogService = activityLogService ;
+        this.notificationService = notificationService ;
     }
 
     private User getCurrentUser() {
@@ -100,6 +103,8 @@ public class TaskService {
         task.setStatus(TaskStatus.TODO);
 
         Task saved = taskRepository.save(task);
+
+        notificationService.notifyAssignTask(saved);
 
         return convert(saved);
     }
