@@ -1,8 +1,11 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.vennhuu.TaskManagementSystem.Entity.Project;
@@ -10,11 +13,14 @@ import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.Task;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.task.TaskReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.task.TaskResponse;
+import com.vennhuu.TaskManagementSystem.Entity.res.task.UpdateStatus;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.TaskRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
+import com.vennhuu.TaskManagementSystem.Spec.TaskSpecification;
 import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
 
@@ -69,16 +75,16 @@ public class TaskService {
         }
 
         User assignee = this.userRepository.findById(req.getAssigneeId())
-                .orElseThrow(() -> new RuntimeException("Assignee không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Người được giao không tồn tại"));
 
         boolean assigneeInProject = this.projectMemberRepository.existsByProjectIdAndUserId(projectId, assignee.getId());
 
         if (!assigneeInProject) {
-            throw new RuntimeException("Assignee không thuộc project");
+            throw new RuntimeException("Người được giao không thuộc project");
         }
 
-        if (req.getDueDate() != null && req.getDueDate().isBefore(Instant.now())) {
-            throw new RuntimeException("DueDate không hợp lệ");
+        if (req.getDueDate() != null && req.getDueDate().isBefore(LocalDate.now())) {
+            throw new RuntimeException("Ngày giao hạn không hợp lệ");
         }
 
         Task task = new Task();
@@ -96,12 +102,28 @@ public class TaskService {
         return convert(saved);
     }
 
-    public List<TaskResponse> getAllTask(Long projectId) {
+    public ResultPaginationDTO getAllTask(Long projectId, Specification<Task> spec, Pageable pageable) {
 
-        return taskRepository.findByProjectId(projectId)
+        Specification<Task> finalSpec = Specification.where(TaskSpecification.hasProject(projectId)).and(spec);
+
+        Page<Task> pageTask = taskRepository.findAll(finalSpec, pageable);
+
+        ResultPaginationDTO res = new ResultPaginationDTO() ;
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta() ;
+
+        meta.setCurrentPage(pageTask.getNumber() + 1);
+        meta.setPageSize(pageTask.getSize());
+        meta.setTotalPages(pageTask.getTotalPages());
+        meta.setTotalElements(pageTask.getTotalElements());
+
+        res.setMeta(meta);
+        List<TaskResponse> listTask = pageTask.getContent()
                 .stream()
                 .map(this::convert)
                 .toList();
+        
+        res.setResult(listTask);
+        return res ;
     }
 
     public TaskResponse getTask(Long projectId, Long taskId) {
@@ -126,15 +148,16 @@ public class TaskService {
         }
 
         User assignee = userRepository.findById(req.getAssigneeId())
-                .orElseThrow(() -> new RuntimeException("Assignee không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Người được giao không tồn tại"));
 
-        boolean exists =
-                projectMemberRepository.existsByProjectIdAndUserId(
-                        projectId,
-                        assignee.getId());
+        boolean exists = projectMemberRepository.existsByProjectIdAndUserId(projectId, assignee.getId());
 
         if (!exists) {
-            throw new RuntimeException("Assignee không thuộc project");
+            throw new RuntimeException("Người được giao không thuộc project");
+        }
+
+        if (req.getDueDate() != null && req.getDueDate().isBefore(LocalDate.now())) {
+            throw new RuntimeException("Ngày giao hạn không hợp lệ");
         }
 
         task.setTitle(req.getTitle());
@@ -147,10 +170,7 @@ public class TaskService {
         return convert(saved);
     }
 
-    public TaskResponse updateStatus(
-            Long projectId,
-            Long taskId,
-            TaskStatus status) {
+    public TaskResponse updateStatus(Long projectId, Long taskId, UpdateStatus status) {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại"));
@@ -159,7 +179,7 @@ public class TaskService {
             throw new RuntimeException("Task không thuộc project");
         }
 
-        task.setStatus(status);
+        task.setStatus(status.getStatus());
 
         return convert(taskRepository.save(task));
     }
@@ -187,7 +207,7 @@ public class TaskService {
         res.setDueDate(task.getDueDate());
         res.setCreatedAt(task.getCreatedAt());
         res.setProjectId(task.getProject().getId());
-        res.setCreatedById(task.getCreatedBy().getId());
+        // res.setCreatedById(task.getCreatedBy().getId());
         res.setCreatedByName(task.getCreatedBy().getFullName());
         res.setAssigneeId(task.getAssignee().getId());
         res.setAssigneeName(task.getAssignee().getFullName());

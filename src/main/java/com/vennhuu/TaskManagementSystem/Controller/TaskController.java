@@ -1,7 +1,7 @@
 package com.vennhuu.TaskManagementSystem.Controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,14 +12,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.turkraft.springfilter.boot.Filter;
+import com.vennhuu.TaskManagementSystem.Entity.Task;
 import com.vennhuu.TaskManagementSystem.Entity.req.task.TaskReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.task.TaskResponse;
+import com.vennhuu.TaskManagementSystem.Entity.res.task.UpdateStatus;
 import com.vennhuu.TaskManagementSystem.Service.TaskService;
 import com.vennhuu.TaskManagementSystem.Utils.annotation.APIMessage;
-import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
 
 import jakarta.validation.Valid;
 
@@ -42,9 +44,12 @@ public class TaskController {
 
     @GetMapping
     @APIMessage("Get all task")
-    public ResponseEntity<List<TaskResponse>> getAllTask(@PathVariable Long projectId) {
+    public ResponseEntity<ResultPaginationDTO> getAllTask(
+            @PathVariable Long projectId,
+            @Filter Specification<Task> spec,
+            Pageable pageable ) {
 
-        return ResponseEntity.ok(taskService.getAllTask(projectId));
+        return ResponseEntity.ok(taskService.getAllTask(projectId, spec, pageable));
     }
 
     @GetMapping("/{taskId}")
@@ -63,8 +68,7 @@ public class TaskController {
             @PathVariable Long taskId,
             @Valid @RequestBody TaskReq req) {
 
-        return ResponseEntity.ok(
-                taskService.updateTask(projectId, taskId, req));
+        return ResponseEntity.ok(taskService.updateTask(projectId, taskId, req));
     }
 
     @PatchMapping("/{taskId}/status")
@@ -72,10 +76,9 @@ public class TaskController {
     public ResponseEntity<TaskResponse> updateStatus(
             @PathVariable Long projectId,
             @PathVariable Long taskId,
-            @RequestParam TaskStatus status) {
+            @RequestBody UpdateStatus status) {
 
-        return ResponseEntity.ok(
-                taskService.updateStatus(projectId, taskId, status));
+        return ResponseEntity.ok(taskService.updateStatus(projectId, taskId, status));
     }
 
     @DeleteMapping("/{taskId}")

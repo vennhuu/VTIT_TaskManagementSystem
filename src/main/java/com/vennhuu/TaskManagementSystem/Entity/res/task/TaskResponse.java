@@ -1,6 +1,7 @@
 package com.vennhuu.TaskManagementSystem.Entity.res.task;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
 
@@ -19,13 +20,13 @@ public class TaskResponse {
 
     private TaskStatus status;
 
-    private Instant dueDate;
+    private LocalDate dueDate;
 
     private Instant createdAt;
 
     private Long projectId;
 
-    private Long createdById;
+    // private Long createdById;
 
     private String createdByName;
 

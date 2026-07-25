@@ -1,6 +1,6 @@
 package com.vennhuu.TaskManagementSystem.Entity;
 
-import java.time.Instant;
+import java.time.LocalDate;
 
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
 
@@ -38,7 +38,7 @@ public class Task extends BaseEntity{
     @Enumerated(EnumType.STRING)
     private TaskStatus status = TaskStatus.TODO;
 
-    private Instant dueDate;
+    private LocalDate dueDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")

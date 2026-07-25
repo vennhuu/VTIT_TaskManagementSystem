@@ -1,6 +1,6 @@
 package com.vennhuu.TaskManagementSystem.Entity.req.task;
 
-import java.time.Instant;
+import java.time.LocalDate;
 
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
 
@@ -20,7 +20,7 @@ public class TaskReq {
 
     private TaskStatus status;
 
-    private Instant dueDate;
+    private LocalDate dueDate;
 
     @NotNull(message = "Thiếu assignee")
     private Long assigneeId;
