@@ -15,7 +15,6 @@ import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.task.TaskReq;
 import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.task.TaskResponse;
-import com.vennhuu.TaskManagementSystem.Entity.res.task.UpdateStatus;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.TaskRepository;
@@ -34,17 +33,20 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ActivityLogService activityLogService ;
 
     public TaskService(
             TaskRepository taskRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository
+            ProjectMemberRepository projectMemberRepository,
+            ActivityLogService activityLogService
     ) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.activityLogService = activityLogService ;
     }
 
     private User getCurrentUser() {
@@ -170,7 +172,7 @@ public class TaskService {
         return convert(saved);
     }
 
-    public TaskResponse updateStatus(Long projectId, Long taskId, UpdateStatus status) {
+    public TaskResponse updateStatus(Long projectId, Long taskId, TaskStatus status) {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại"));
@@ -179,9 +181,17 @@ public class TaskService {
             throw new RuntimeException("Task không thuộc project");
         }
 
-        task.setStatus(status.getStatus());
+        User currentUser = getCurrentUser();
 
-        return convert(taskRepository.save(task));
+        TaskStatus oldStatus = task.getStatus();
+
+        task.setStatus(status);
+
+        Task saved = taskRepository.save(task);
+
+        activityLogService.save(saved, currentUser, oldStatus, status);
+
+        return convert(saved);
     }
 
     public void deleteTask(Long projectId, Long taskId) {

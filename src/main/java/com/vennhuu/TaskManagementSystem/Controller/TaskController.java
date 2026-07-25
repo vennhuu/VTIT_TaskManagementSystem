@@ -76,9 +76,9 @@ public class TaskController {
     public ResponseEntity<TaskResponse> updateStatus(
             @PathVariable Long projectId,
             @PathVariable Long taskId,
-            @RequestBody UpdateStatus status) {
+            @RequestBody UpdateStatus req) {
 
-        return ResponseEntity.ok(taskService.updateStatus(projectId, taskId, status));
+        return ResponseEntity.ok(taskService.updateStatus(projectId, taskId, req.getStatus()));
     }
 
     @DeleteMapping("/{taskId}")
