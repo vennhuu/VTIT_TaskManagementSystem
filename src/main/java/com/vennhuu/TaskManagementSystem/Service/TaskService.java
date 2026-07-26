@@ -19,6 +19,7 @@ import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.TaskRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
+import com.vennhuu.TaskManagementSystem.Service.aop.TaskServiceAOP;
 import com.vennhuu.TaskManagementSystem.Spec.TaskSpecification;
 import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
@@ -33,8 +34,9 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final ActivityLogService activityLogService ;
+    private final ActivityLogService activityLogService;
     private final NotificationService notificationService;
+    private final TaskServiceAOP taskServiceAOP;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -42,14 +44,16 @@ public class TaskService {
             UserRepository userRepository,
             ProjectMemberRepository projectMemberRepository,
             ActivityLogService activityLogService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            TaskServiceAOP taskServiceAOP
     ) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
-        this.activityLogService = activityLogService ;
-        this.notificationService = notificationService ;
+        this.activityLogService = activityLogService;
+        this.notificationService = notificationService;
+        this.taskServiceAOP = taskServiceAOP;
     }
 
     private User getCurrentUser() {
@@ -115,8 +119,8 @@ public class TaskService {
 
         Page<Task> pageTask = taskRepository.findAll(finalSpec, pageable);
 
-        ResultPaginationDTO res = new ResultPaginationDTO() ;
-        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta() ;
+        ResultPaginationDTO res = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
 
         meta.setCurrentPage(pageTask.getNumber() + 1);
         meta.setPageSize(pageTask.getSize());
@@ -128,21 +132,21 @@ public class TaskService {
                 .stream()
                 .map(this::convert)
                 .toList();
-        
+
         res.setResult(listTask);
-        return res ;
+        return res;
     }
 
     public TaskResponse getTask(Long projectId, Long taskId) {
 
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task không tồn tại"));
+        User currentUser = getCurrentUser();
 
-        if (!task.getProject().getId().equals(projectId)) {
-            throw new RuntimeException("Task không thuộc project");
+        boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(projectId, currentUser.getId());
+        if (!isMember) {
+            throw new RuntimeException("Quyền truy cập bị từ chối");
         }
 
-        return convert(task);
+        return this.taskServiceAOP.getTaskCached(projectId, taskId); // đổi tên rõ nghĩa hơn
     }
 
     public TaskResponse updateTask(Long projectId, Long taskId, TaskReq req) {

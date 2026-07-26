@@ -17,6 +17,7 @@ import com.vennhuu.TaskManagementSystem.Entity.res.project.ProjectResponse;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
+import com.vennhuu.TaskManagementSystem.Service.aop.ProjectServiceAOP;
 import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
 import com.vennhuu.TaskManagementSystem.Utils.constant.ProjectRole;
 
@@ -26,15 +27,18 @@ public class ProjectService {
     private final ProjectRepository projectRepository ;
     private final UserRepository userRepository ;
     private final ProjectMemberRepository projectMemberRepository ;
+    private final ProjectServiceAOP projectServiceAOP ;
 
     public ProjectService(
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository
+            ProjectMemberRepository projectMemberRepository,
+            ProjectServiceAOP projectServiceAOP
     ) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository ;
         this.projectMemberRepository = projectMemberRepository ;
+        this.projectServiceAOP = projectServiceAOP ;
     }
 
     private User getCurrentUser() {
@@ -154,17 +158,20 @@ public class ProjectService {
     }
 
     public ProjectResponse getProject(Long id) {
-
         User currentUser = getCurrentUser();
 
-        Project project = projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy dự án này"));
-
-        boolean isMember =this.projectMemberRepository.existsByProjectIdAndUserId( id, currentUser.getId() );
-
+        boolean isMember = this.projectMemberRepository.existsByProjectIdAndUserId(id, currentUser.getId());
         if (!isMember) {
             throw new RuntimeException("Quyền truy cập bị từ chối");
         }
 
-        return toResponse(project);
+        return this.projectServiceAOP.getProjectCached(id); // chỉ phần này được cache
     }
+
+    // @Cacheable(value = "projects", key = "#id")
+    // public ProjectResponse getProjectCached(Long id) {
+    //     Project project = projectRepository.findById(id)
+    //             .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án này"));
+    //     return toResponse(project);
+    // }
 }
