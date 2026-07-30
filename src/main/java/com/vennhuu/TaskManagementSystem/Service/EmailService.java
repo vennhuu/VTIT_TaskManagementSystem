@@ -4,10 +4,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailSender;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
@@ -30,61 +28,61 @@ public class EmailService {
         this.templateEngine = templateEngine ;
     }
 
-    public void sendSimpleEmail(String to, String subject, String body) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mail);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
+    // public void sendSimpleEmail(String to, String subject, String body) {
+    //     SimpleMailMessage message = new SimpleMailMessage();
+    //     message.setFrom(mail);
+    //     message.setTo(to);
+    //     message.setSubject(subject);
+    //     message.setText(body);
 
-        mailSender.send(message);
-    }
+    //     mailSender.send(message);
+    // }
 
-    @Async
-    public void sendEmailSync(String to, String subject, String content, boolean isMultipart, boolean isHTML) {
+    // @Async
+    // public void sendEmailSync(String to, String subject, String content, boolean isMultipart, boolean isHTML) {
         
-        MimeMessage message = javaMailSender.createMimeMessage();
+    //     MimeMessage message = javaMailSender.createMimeMessage();
 
-        try {
-             MimeMessageHelper helper = new MimeMessageHelper(message, isMultipart, StandardCharsets.UTF_8.name());
+    //     try {
+    //          MimeMessageHelper helper = new MimeMessageHelper(message, isMultipart, StandardCharsets.UTF_8.name());
         
-            helper.setFrom(mail);
-            helper.setTo(to);
-            helper.setSubject(subject);
+    //         helper.setFrom(mail);
+    //         helper.setTo(to);
+    //         helper.setSubject(subject);
             
-            // Tham số true thứ hai xác nhận nội dung là HTML
-            helper.setText(content, isHTML); 
+    //         // Tham số true thứ hai xác nhận nội dung là HTML
+    //         helper.setText(content, isHTML); 
 
-            javaMailSender.send(message);
-        } catch (Exception e) {
-            System.out.println("ERROR MAIL: " + e);
-        }
+    //         javaMailSender.send(message);
+    //     } catch (Exception e) {
+    //         System.out.println("ERROR MAIL: " + e);
+    //     }
 
-    }
+    // }
 
-    public void sendHtmlEmail(String to, String subject, String name, String messageContent, boolean isMultipart, boolean isHtml) {
-        MimeMessage message = javaMailSender.createMimeMessage();
+    // public void sendHtmlEmail(String to, String subject, String name, String messageContent, boolean isMultipart, boolean isHtml) {
+    //     MimeMessage message = javaMailSender.createMimeMessage();
 
-        try {
-            MimeMessageHelper helper = new MimeMessageHelper(message, isMultipart, StandardCharsets.UTF_8.name());
+    //     try {
+    //         MimeMessageHelper helper = new MimeMessageHelper(message, isMultipart, StandardCharsets.UTF_8.name());
 
-            Context context = new Context();
-            context.setVariable("name", name);
-            context.setVariable("message", messageContent);
+    //         Context context = new Context();
+    //         context.setVariable("name", name);
+    //         context.setVariable("message", messageContent);
 
-            String htmlContent = templateEngine.process("email-template", context);
+    //         String htmlContent = templateEngine.process("email-template", context);
 
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, isHtml); // true nghĩa là gửi dạng HTML
+    //         helper.setTo(to);
+    //         helper.setSubject(subject);
+    //         helper.setText(htmlContent, isHtml); // true nghĩa là gửi dạng HTML
 
-            // 4. Gửi email
-            javaMailSender.send(message);
-        } catch (Exception e) {
-            System.out.println("ERROR MAIL: " + e);
-        }
+    //         // 4. Gửi email
+    //         javaMailSender.send(message);
+    //     } catch (Exception e) {
+    //         System.out.println("ERROR MAIL: " + e);
+    //     }
 
-    }
+    // }
 
     public void sendAssignTaskEmail(String to, String fullName, String projectName, String taskTitle) {
 

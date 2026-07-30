@@ -13,6 +13,7 @@ import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.Task;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.task.TaskReq;
+import com.vennhuu.TaskManagementSystem.Entity.res.AssignTaskEmailMessage;
 import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.task.TaskResponse;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
@@ -20,6 +21,7 @@ import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.TaskRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
 import com.vennhuu.TaskManagementSystem.Service.aop.TaskServiceAOP;
+import com.vennhuu.TaskManagementSystem.Service.producer.RabbitMQProducer;
 import com.vennhuu.TaskManagementSystem.Spec.TaskSpecification;
 import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
 import com.vennhuu.TaskManagementSystem.Utils.constant.TaskStatus;
@@ -37,6 +39,7 @@ public class TaskService {
     private final ActivityLogService activityLogService;
     private final NotificationService notificationService;
     private final TaskServiceAOP taskServiceAOP;
+    private final RabbitMQProducer rabbitMQProducer;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -45,7 +48,8 @@ public class TaskService {
             ProjectMemberRepository projectMemberRepository,
             ActivityLogService activityLogService,
             NotificationService notificationService,
-            TaskServiceAOP taskServiceAOP
+            TaskServiceAOP taskServiceAOP,
+            RabbitMQProducer rabbitMQProducer
     ) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
@@ -54,6 +58,7 @@ public class TaskService {
         this.activityLogService = activityLogService;
         this.notificationService = notificationService;
         this.taskServiceAOP = taskServiceAOP;
+        this.rabbitMQProducer = rabbitMQProducer ;
     }
 
     private User getCurrentUser() {
@@ -108,7 +113,15 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
 
-        notificationService.notifyAssignTask(saved);
+        AssignTaskEmailMessage message = new AssignTaskEmailMessage(
+            assignee.getEmail(),
+            assignee.getFullName(),
+            saved.getTitle(),
+            project.getName(),
+            saved.getDueDate() != null ? saved.getDueDate().toString() : "Chưa có hạn"
+        );
+
+        rabbitMQProducer.sendAssignTaskEmail(message);
 
         return convert(saved);
     }
