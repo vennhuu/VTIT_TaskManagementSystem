@@ -22,6 +22,7 @@ import com.vennhuu.TaskManagementSystem.Entity.RefreshToken;
 import com.vennhuu.TaskManagementSystem.Entity.Role;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Entity.req.auth.LoginReq;
+import com.vennhuu.TaskManagementSystem.Entity.req.auth.RegisterReq;
 import com.vennhuu.TaskManagementSystem.Entity.res.auth.ResLoginDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.auth.UserResponse;
 import com.vennhuu.TaskManagementSystem.Service.RefreshTokenService;
@@ -29,215 +30,206 @@ import com.vennhuu.TaskManagementSystem.Service.RoleService;
 import com.vennhuu.TaskManagementSystem.Service.UserService;
 import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
 import com.vennhuu.TaskManagementSystem.Utils.annotation.APIMessage;
+import com.vennhuu.TaskManagementSystem.Utils.errors.ExistMailException;
+import com.vennhuu.TaskManagementSystem.Utils.errors.UnauthorizedException;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
-
-
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Đăng ký, đăng nhập, refresh token và quản lý phiên đăng nhập")
 public class AuthController {
-    
-    private final PasswordEncoder passwordEncoder ;
-    private final UserService userService ;
-    private final AuthenticationManager authenticationManager ;
-    private final SecurityUtil securityUtil ;
-    private final RoleService roleService ;
-    private final RefreshTokenService refreshTokenService ;
+
+    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
+    private final AuthenticationManager authenticationManager;
+    private final SecurityUtil securityUtil;
+    private final RoleService roleService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${venn.jwt.refresh-token-validity-in-seconds}")
-    private long refreshTokenExpiration ;
+    private long refreshTokenExpiration;
 
     public AuthController(
-            PasswordEncoder passwordEncoder, 
-            UserService userService, 
-            AuthenticationManager authenticationManager, 
-            SecurityUtil securityUtil, 
+            PasswordEncoder passwordEncoder,
+            UserService userService,
+            AuthenticationManager authenticationManager,
+            SecurityUtil securityUtil,
             RoleService roleService,
             RefreshTokenService refreshTokenService
-        ) {
+    ) {
         this.passwordEncoder = passwordEncoder;
-        this.userService = userService ;
-        this.authenticationManager = authenticationManager ;
-        this.securityUtil = securityUtil ;
-        this.roleService = roleService ;
-        this.refreshTokenService = refreshTokenService ;
+        this.userService = userService;
+        this.authenticationManager = authenticationManager;
+        this.securityUtil = securityUtil;
+        this.roleService = roleService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @PostMapping("/register")
     @APIMessage("Register a new user")
-    public ResponseEntity<UserResponse> register(@RequestBody User newUser) throws Exception {
-
-        if ( this.userService.existsByEmail(newUser.getEmail()) ) {
-            throw new Exception("Email này đã tồn tại") ;
+    @Operation(summary = "Đăng ký tài khoản", description = "Tạo tài khoản mới với email và mật khẩu. Email phải là duy nhất trong hệ thống.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Đăng ký thành công"),
+        @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ (validation)"),
+        @ApiResponse(responseCode = "409", description = "Email đã tồn tại trong hệ thống")
+    })
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterReq req) {
+        if (userService.existsByEmail(req.getEmail())) {
+            throw new ExistMailException("Email này đã được sử dụng");
         }
-        String hashPassword = this.passwordEncoder.encode(newUser.getPassword()) ;
-        newUser.setPassword(hashPassword);
 
-        Role r = this.roleService.findByName("ROLE_USER") ;
-        newUser.setRole(r);
-        this.userService.saveUser(newUser) ;
-        return ResponseEntity.status(HttpStatus.CREATED).body(this.userService.createNewUser(newUser));
+        Role defaultRole = roleService.findByName("ROLE_USER");
+
+        User newUser = new User();
+        newUser.setFullName(req.getFullName());
+        newUser.setEmail(req.getEmail());
+        newUser.setPassword(passwordEncoder.encode(req.getPassword()));
+        newUser.setRole(defaultRole);
+
+        userService.save(newUser);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.toUserResponse(newUser));
     }
 
     @PostMapping("/login")
     @APIMessage("Login")
-    public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody LoginReq user, HttpServletRequest request) {
+    @Operation(summary = "Đăng nhập", description = "Xác thực bằng email/password, trả về Access Token và set Refresh Token vào HttpOnly cookie.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Đăng nhập thành công"),
+        @ApiResponse(responseCode = "401", description = "Email hoặc mật khẩu không đúng")
+    })
+    public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody LoginReq req, HttpServletRequest request) {
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword());
 
-        // nạp input gồm email và password vào security
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword()) ;
-
-        // xác thực người dùng 
-        Authentication authentication = this.authenticationManager.authenticate(authenticationToken) ;
-
-        // set thông tin người dùng đăng nhập vào context (có thể sử dụng sau này)
+        Authentication authentication = authenticationManager.authenticate(authToken);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        ResLoginDTO res = new ResLoginDTO() ;
-        User currentUserDB = this.userService.findByEmail(user.getEmail()) ;
+        User currentUser = userService.findByEmail(req.getEmail());
 
-        if (currentUserDB != null) {
-            ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin(
-                    currentUserDB.getId(),
-                    currentUserDB.getEmail(),
-                    currentUserDB.getFullName());
-            res.setUser(userLogin);
+        ResLoginDTO res = new ResLoginDTO();
+        if (currentUser != null) {
+            res.setUser(new ResLoginDTO.UserLogin(
+                    currentUser.getId(),
+                    currentUser.getEmail(),
+                    currentUser.getFullName()
+            ));
         }
 
-        // create access token
-        String access_token = this.securityUtil.createAccessToken(authentication.getName(), res);
-        res.setAccessToken(access_token);
+        String accessToken = securityUtil.createAccessToken(authentication.getName(), res);
+        res.setAccessToken(accessToken);
 
-        // create refresh token
-        String refresh_token = this.securityUtil.createRefreshToken(user.getEmail(), res);
-
-        // update user
-        String device = request.getHeader("User-Agent");
-
-        this.refreshTokenService.updateUserToken(refresh_token, user.getEmail(), device);
-
-        // set cookies
-        ResponseCookie resCookies = ResponseCookie
-                .from("refresh_token", refresh_token)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(refreshTokenExpiration)
-                .build();
+        String refreshToken = securityUtil.createRefreshToken(req.getEmail(), res);
+        refreshTokenService.createToken(refreshToken, req.getEmail(), request.getHeader("User-Agent"));
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, resCookies.toString())
+                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshToken).toString())
                 .body(res);
     }
-    
+
     @GetMapping("/account")
     @APIMessage("Fetch account")
+    @Operation(summary = "Lấy thông tin tài khoản hiện tại", description = "Trả về thông tin user đang đăng nhập dựa trên Access Token.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lấy thông tin thành công"),
+        @ApiResponse(responseCode = "401", description = "Chưa xác thực")
+    })
     public ResponseEntity<ResLoginDTO.UserGetAccount> getAccount() {
-        String email = SecurityUtil.getCurrentUserLogin().isPresent()
-                ? SecurityUtil.getCurrentUserLogin().get()
-                : "";
- 
-        User currentUserDB = this.userService.findByEmail(email);
-        ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin();
+        String email = SecurityUtil.getCurrentUserLogin().orElse("");
+
+        User currentUser = userService.findByEmail(email);
         ResLoginDTO.UserGetAccount userGetAccount = new ResLoginDTO.UserGetAccount();
 
-        if (currentUserDB != null) {
-            userLogin.setId(currentUserDB.getId());
-            userLogin.setEmail(currentUserDB.getEmail());
-            userLogin.setName(currentUserDB.getFullName());
-
+        if (currentUser != null) {
+            ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin();
+            userLogin.setId(currentUser.getId());
+            userLogin.setEmail(currentUser.getEmail());
+            userLogin.setName(currentUser.getFullName());
             userGetAccount.setUser(userLogin);
         }
 
-        return ResponseEntity.ok().body(userGetAccount);
+        return ResponseEntity.ok(userGetAccount);
     }
-    
+
     @PostMapping("/logout")
     @APIMessage("Logout account")
+    @Operation(summary = "Đăng xuất", description = "Thu hồi Refresh Token và xóa cookie. Access Token sẽ hết hạn theo TTL của nó.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Đăng xuất thành công")
+    })
     public ResponseEntity<Void> logout(
             @CookieValue(value = "refresh_token", required = false) String refreshToken
     ) {
-
         if (refreshToken != null) {
             refreshTokenService.revokeToken(refreshToken);
         }
 
-        ResponseCookie cookie = ResponseCookie
-                .from("refresh_token", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .build();
-
         return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
                 .build();
     }
 
     @PostMapping("/refresh")
     @APIMessage("Refresh access token")
+    @Operation(summary = "Làm mới Access Token", description = "Dùng Refresh Token trong cookie để cấp Access Token mới. Refresh Token cũ sẽ bị xóa (rotation).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Cấp Access Token mới thành công"),
+        @ApiResponse(responseCode = "401", description = "Refresh Token không hợp lệ hoặc đã bị thu hồi")
+    })
     public ResponseEntity<ResLoginDTO> refreshToken(
-            @CookieValue(value = "refresh_token", required = false) String refreshToken) throws Exception {
-
-        // 1. Kiểm tra cookie có tồn tại không
+            @CookieValue(value = "refresh_token", required = false) String refreshToken
+    ) {
         if (refreshToken == null) {
-            throw new Exception("Không tìm thấy Refresh Token.");
+            throw new UnauthorizedException("Không tìm thấy Refresh Token");
         }
 
-        // 2. Kiểm tra JWT Refresh Token có hợp lệ không
-        Jwt decodedJwt = this.securityUtil.checkValidRefreshToken(refreshToken);
-
+        Jwt decodedJwt = securityUtil.checkValidRefreshToken(refreshToken);
         String email = decodedJwt.getSubject();
 
-        // 3. Kiểm tra Refresh Token có trong database không
-        RefreshToken currentRefreshToken =
-                this.refreshTokenService.findByToken(refreshToken);
-
-        if (currentRefreshToken == null) {
-            throw new Exception("Refresh Token không hợp lệ.");
+        RefreshToken storedToken = refreshTokenService.findByToken(refreshToken);
+        if (storedToken == null) {
+            throw new UnauthorizedException("Refresh Token không hợp lệ hoặc đã bị thu hồi");
         }
 
-        // 4. Lấy User
-        User currentUser = currentRefreshToken.getUser();
-
-        // 5. Tạo dữ liệu trả về
+        User user = storedToken.getUser();
         ResLoginDTO res = new ResLoginDTO();
+        res.setUser(new ResLoginDTO.UserLogin(user.getId(), user.getEmail(), user.getFullName()));
 
-        ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin(
-                currentUser.getId(),
-                currentUser.getEmail(),
-                currentUser.getFullName()
-        );
+        String newAccessToken = securityUtil.createAccessToken(email, res);
+        res.setAccessToken(newAccessToken);
 
-        res.setUser(userLogin);
+        String newRefreshToken = securityUtil.createRefreshToken(email, res);
 
-        // 6. Sinh Access Token mới
-        String accessToken = this.securityUtil.createAccessToken(email, res);
+        refreshTokenService.deleteByToken(refreshToken);
+        refreshTokenService.createToken(newRefreshToken, user);
 
-        res.setAccessToken(accessToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(newRefreshToken).toString())
+                .body(res);
+    }
 
-        // 7. Sinh Refresh Token mới
-        String newRefreshToken = this.securityUtil.createRefreshToken(email, res);
-
-        // 8. Xóa Refresh Token cũ
-        this.refreshTokenService.deleteByToken(refreshToken);
-
-        // 9. Lưu Refresh Token mới
-        this.refreshTokenService.saveRefreshToken( newRefreshToken, currentUser );
-
-        // 10. Gửi Cookie mới
-        ResponseCookie cookie = ResponseCookie
-                .from("refresh_token", newRefreshToken)
+    // Cookies
+    private ResponseCookie buildRefreshCookie(String token) {
+        return ResponseCookie.from("refresh_token", token)
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
                 .maxAge(refreshTokenExpiration)
                 .build();
+    }
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(res);
+    private ResponseCookie clearRefreshCookie() {
+        return ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0)
+                .build();
     }
 }

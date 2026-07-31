@@ -4,88 +4,64 @@ import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.vennhuu.TaskManagementSystem.Entity.RefreshToken;
 import com.vennhuu.TaskManagementSystem.Entity.User;
 import com.vennhuu.TaskManagementSystem.Repository.RefreshTokenRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
 
-import jakarta.transaction.Transactional;
-
 @Service
+@Transactional
 public class RefreshTokenService {
 
     @Value("${venn.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
 
-    private final UserRepository userRepository ;
-    private final RefreshTokenRepository refreshTokenRepository ;
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public RefreshTokenService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
-
-    public void updateUserToken( String token, String email, String device ) {
-
-        User currentUser = this.userRepository.findByEmail(email);
-
-        if (currentUser == null) {
+    public void createToken(String token, String email, String device) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
             return;
         }
+        saveToken(token, user, device);
+    }
 
-        RefreshToken refreshToken = new RefreshToken();
-
-        refreshToken.setToken(token);
-        refreshToken.setUser(currentUser);
-
-        refreshToken.setDevice(device);
-
-        refreshToken.setCreatedAt(Instant.now());
-
-        refreshToken.setExpiredAt(
-                Instant.now()
-                        .plusSeconds(refreshTokenExpiration)
-        );
-
-        refreshToken.setRevoked(false);
-
-        refreshTokenRepository.save(refreshToken);
+    public void createToken(String token, User user) {
+        saveToken(token, user, null);
     }
 
     public void revokeToken(String token) {
-
-        RefreshToken refreshToken = refreshTokenRepository
-                .findByToken(token)
-                .orElse(null);
-
-        if (refreshToken != null) {
-            refreshToken.setRevoked(true);
-            refreshTokenRepository.save(refreshToken);
-        }
+        refreshTokenRepository.findByToken(token).ifPresent(rt -> {
+            rt.setRevoked(true);
+            refreshTokenRepository.save(rt);
+        });
     }
 
-    public RefreshToken findByToken( String token ) {
-        return this.refreshTokenRepository.findByToken(token).orElse(null) ;
+    @Transactional(readOnly = true)
+    public RefreshToken findByToken(String token) {
+        return refreshTokenRepository.findByToken(token).orElse(null);
     }
 
-    @Transactional
     public void deleteByToken(String token) {
         refreshTokenRepository.deleteByToken(token);
     }
 
-    public void saveRefreshToken(String token, User user) {
-
+    private void saveToken(String token, User user, String device) {
         RefreshToken refreshToken = new RefreshToken();
-
         refreshToken.setToken(token);
         refreshToken.setUser(user);
+        refreshToken.setDevice(device);
         refreshToken.setCreatedAt(Instant.now());
-        refreshToken.setExpiredAt(
-                Instant.now().plusSeconds(refreshTokenExpiration)
-        );
-
+        refreshToken.setExpiredAt(Instant.now().plusSeconds(refreshTokenExpiration));
+        refreshToken.setRevoked(false);
         refreshTokenRepository.save(refreshToken);
     }
 }

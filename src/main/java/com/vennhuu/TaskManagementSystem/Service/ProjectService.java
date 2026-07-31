@@ -1,177 +1,135 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.vennhuu.TaskManagementSystem.Entity.Project;
 import com.vennhuu.TaskManagementSystem.Entity.ProjectMember;
 import com.vennhuu.TaskManagementSystem.Entity.User;
-import com.vennhuu.TaskManagementSystem.Entity.req.project.ProjectReq;
 import com.vennhuu.TaskManagementSystem.Entity.res.ResultPaginationDTO;
 import com.vennhuu.TaskManagementSystem.Entity.res.project.ProjectResponse;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectMemberRepository;
 import com.vennhuu.TaskManagementSystem.Repository.ProjectRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
-import com.vennhuu.TaskManagementSystem.Service.aop.ProjectServiceAOP;
-import com.vennhuu.TaskManagementSystem.Utils.SecurityUtil;
+import com.vennhuu.TaskManagementSystem.Service.cache.ProjectCacheService;
+import com.vennhuu.TaskManagementSystem.Entity.req.project.ProjectReq;
+import com.vennhuu.TaskManagementSystem.Service.mapper.ProjectMapper;
+import com.vennhuu.TaskManagementSystem.Utils.AuthContextHolder;
 import com.vennhuu.TaskManagementSystem.Utils.constant.ProjectRole;
+import com.vennhuu.TaskManagementSystem.Utils.errors.ForbiddenException;
+import com.vennhuu.TaskManagementSystem.Utils.errors.ResourceNotFoundException;
 
 @Service
+@Transactional
 public class ProjectService {
-    
-    private final ProjectRepository projectRepository ;
-    private final UserRepository userRepository ;
-    private final ProjectMemberRepository projectMemberRepository ;
-    private final ProjectServiceAOP projectServiceAOP ;
+
+    private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectCacheService projectCacheService;
 
     public ProjectService(
             ProjectRepository projectRepository,
             UserRepository userRepository,
             ProjectMemberRepository projectMemberRepository,
-            ProjectServiceAOP projectServiceAOP
+            ProjectCacheService projectCacheService
     ) {
         this.projectRepository = projectRepository;
-        this.userRepository = userRepository ;
-        this.projectMemberRepository = projectMemberRepository ;
-        this.projectServiceAOP = projectServiceAOP ;
+        this.userRepository = userRepository;
+        this.projectMemberRepository = projectMemberRepository;
+        this.projectCacheService = projectCacheService;
     }
 
-    private User getCurrentUser() {
-
-        String email = SecurityUtil.getCurrentUserLogin().orElseThrow(() -> new RuntimeException("Bạn chưa đăng nhập"));
-
-        return userRepository.findByEmail(email);
-    }
-
+    @Transactional(readOnly = true)
     public ResultPaginationDTO getMyProjects(Specification<Project> spec, Pageable pageable) {
-        Page<Project> pageProject = this.projectRepository.findAll(spec, pageable) ;
-        ResultPaginationDTO rs = new ResultPaginationDTO();
-        ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
+        Page<Project> page = projectRepository.findAll(spec, pageable);
 
-        mt.setCurrentPage(pageable.getPageNumber() + 1 );
-        mt.setPageSize(pageable.getPageSize());
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
+        meta.setCurrentPage(pageable.getPageNumber() + 1);
+        meta.setPageSize(pageable.getPageSize());
+        meta.setTotalPages(page.getTotalPages());
+        meta.setTotalElements(page.getTotalElements());
 
-        mt.setTotalPages(pageProject.getTotalPages());
-        mt.setTotalElements(pageProject.getTotalElements());
+        List<ProjectResponse> projects = page.getContent()
+                .stream()
+                .map(ProjectMapper::toResponse)
+                .toList();
 
-        rs.setMeta(mt);
-
-        // remove sensitive data
-        List<ProjectResponse> listProject = pageProject.getContent()
-                .stream().map(item -> this.toResponse(item))
-                .collect(Collectors.toList());
-
-        rs.setResult(listProject);
-
-        return rs;
+        ResultPaginationDTO result = new ResultPaginationDTO();
+        result.setMeta(meta);
+        result.setResult(projects);
+        return result;
     }
 
-    public Project save(Project project) {
-        return this.projectRepository.save(project) ;
-    }
-
-    public ProjectResponse createProject( ProjectReq request) {
-
-        User currentUser = getCurrentUser();
+    public ProjectResponse createProject(ProjectReq request) {
+        User currentUser = AuthContextHolder.getCurrentUser(userRepository);
 
         Project project = new Project();
-
         project.setName(request.getName());
         project.setDescription(request.getDescription());
         project.setCreatedBy(currentUser);
-
-        this.projectRepository.save(project);
+        projectRepository.save(project);
 
         ProjectMember member = new ProjectMember();
-
         member.setProject(project);
         member.setUser(currentUser);
         member.setRole(ProjectRole.OWNER);
+        projectMemberRepository.save(member);
 
-        this.projectMemberRepository.save(member);
-
-        return toResponse(project);
+        return ProjectMapper.toResponse(project);
     }
 
     public ProjectResponse updateProject(Long id, ProjectReq request) {
+        User currentUser = AuthContextHolder.getCurrentUser(userRepository);
 
-        User currentUser = getCurrentUser();
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy project"));
 
-        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId( id, currentUser.getId() );
-
-        Project p = this.projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Khong tim thay project nay"));
+        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(id, currentUser.getId());
 
         if (member == null || member.getRole() != ProjectRole.OWNER) {
-            throw new RuntimeException("Chỉ có chủ sở hữu mới được phép cập nhật");
+            throw new ForbiddenException("Chỉ có chủ sở hữu mới được phép cập nhật");
         }
-
-        Project project = member.getProject();
 
         project.setName(request.getName());
         project.setDescription(request.getDescription());
-
         projectRepository.save(project);
 
-        return toResponse(project);
-    }
+        projectCacheService.evict(id);
 
+        return ProjectMapper.toResponse(project);
+    }
 
     public void deleteProject(Long id) {
+        User currentUser = AuthContextHolder.getCurrentUser(userRepository);
 
-        User currentUser = getCurrentUser();
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy project"));
 
-        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId( id, currentUser.getId() );
-
-        Project p = this.projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Khong tim thay project nay"));
+        ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(id, currentUser.getId());
 
         if (member == null || member.getRole() != ProjectRole.OWNER) {
-            throw new RuntimeException("Chỉ có chủ sở hữu mới được phép xóa");
+            throw new ForbiddenException("Chỉ có chủ sở hữu mới được phép xóa");
         }
 
-        this.projectRepository.deleteById(id);
+        projectCacheService.evict(id);
+        projectRepository.delete(project);
     }
 
-    private ProjectResponse toResponse(Project project) {
-
-        ProjectResponse res = new ProjectResponse();
-
-        res.setId(project.getId());
-        res.setName(project.getName());
-        res.setDescription(project.getDescription());
-        res.setCreatedAt(project.getCreatedAt());
-        res.setUpdatedAt(project.getUpdatedAt());
-
-        ProjectResponse.Owner owner = new ProjectResponse.Owner();
-
-        owner.setId(project.getCreatedBy().getId());
-        owner.setFullName(project.getCreatedBy().getFullName());
-        owner.setEmail(project.getCreatedBy().getEmail());
-
-        res.setOwner(owner);
-
-        return res;
-    }
-
+    @Transactional(readOnly = true)
     public ProjectResponse getProject(Long id) {
-        User currentUser = getCurrentUser();
+        User currentUser = AuthContextHolder.getCurrentUser(userRepository);
 
-        boolean isMember = this.projectMemberRepository.existsByProjectIdAndUserId(id, currentUser.getId());
+        boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(id, currentUser.getId());
         if (!isMember) {
-            throw new RuntimeException("Quyền truy cập bị từ chối");
+            throw new ForbiddenException("Quyền truy cập bị từ chối");
         }
 
-        return this.projectServiceAOP.getProjectCached(id); // chỉ phần này được cache
+        return projectCacheService.getProjectCached(id);
     }
-
-    // @Cacheable(value = "projects", key = "#id")
-    // public ProjectResponse getProjectCached(Long id) {
-    //     Project project = projectRepository.findById(id)
-    //             .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án này"));
-    //     return toResponse(project);
-    // }
 }

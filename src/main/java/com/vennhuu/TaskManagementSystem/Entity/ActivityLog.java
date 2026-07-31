@@ -13,6 +13,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -20,7 +21,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name="activityLog")
+@Table(
+    name = "activityLog",
+    indexes = {
+        @Index(name = "idx_activity_task_id",    columnList = "task_id"),
+        @Index(name = "idx_activity_updated_at",  columnList = "updatedAt")
+    }
+)
 @Getter
 @Setter
 public class ActivityLog {

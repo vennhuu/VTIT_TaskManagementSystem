@@ -1,6 +1,7 @@
 package com.vennhuu.TaskManagementSystem.Service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.vennhuu.TaskManagementSystem.Entity.Role;
 import com.vennhuu.TaskManagementSystem.Entity.User;
@@ -9,45 +10,46 @@ import com.vennhuu.TaskManagementSystem.Repository.RoleRepository;
 import com.vennhuu.TaskManagementSystem.Repository.UserRepository;
 
 @Service
+@Transactional
 public class UserService {
-    
-    private final UserRepository userRepository ;
-    private final RoleRepository roleRepository ;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository ) {
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+
+    public UserService(UserRepository userRepository, RoleRepository roleRepository) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository ;
+        this.roleRepository = roleRepository;
     }
 
-    public User saveUser(User user){
-        return this.userRepository.save(user) ;
+    public User save(User user) {
+        return userRepository.save(user);
     }
 
-    public UserResponse createNewUser( User user ) {
+    public UserResponse toUserResponse(User user) {
+        UserResponse response = new UserResponse();
+        response.setId(user.getId());
+        response.setEmail(user.getEmail());
+        response.setName(user.getFullName());
+        response.setCreatedAt(user.getCreatedAt());
 
-        UserResponse newUser = new UserResponse() ;
-        newUser.setId(user.getId());
-        newUser.setEmail(user.getEmail());
-        newUser.setName(user.getFullName());
-        newUser.setCreatedAt(user.getCreatedAt());
+        Role role = roleRepository.findByName("ROLE_USER");
+        if (role != null) {
+            UserResponse.RoleUser roleUser = new UserResponse.RoleUser();
+            roleUser.setId(role.getId());
+            roleUser.setName(role.getName());
+            response.setRole(roleUser);
+        }
 
-        Role r = this.roleRepository.findByName("ROLE_USER") ;
-
-        UserResponse.RoleUser role = new UserResponse.RoleUser() ;
-        role.setId(r.getId());
-        role.setName(r.getName());
-        newUser.setRole(role);
-
-        return newUser ;
+        return response;
     }
 
-    public User findByEmail ( String email ) {
-        return this.userRepository.findByEmail(email) ;
+    @Transactional(readOnly = true)
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
-    public boolean existsByEmail ( String email ) {
-        return this.userRepository.existsByEmail(email) ;
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
-
-
 }

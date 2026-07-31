@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -20,7 +21,14 @@ import lombok.Setter;
 
 
 @Entity
-@Table(name="tasks")
+@Table(
+    name = "tasks",
+    indexes = {
+        @Index(name = "idx_task_project_id",  columnList = "project_id"),
+        @Index(name = "idx_task_assignee_id", columnList = "assignee_id"),
+        @Index(name = "idx_task_status",      columnList = "status")
+    }
+)
 @Getter
 @Setter
 public class Task extends BaseEntity{
