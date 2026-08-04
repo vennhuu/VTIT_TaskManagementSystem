@@ -1,3 +1,22 @@
+# Environment variables & secrets (DO NOT COMMIT TO GIT)
 .env
+.env.local
+.env.*.local
+
+# Build outputs
 target/
 *.class
+*.jar
+*.war
+
+# Logs
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# IDE & OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

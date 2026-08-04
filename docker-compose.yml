@@ -1,0 +1,125 @@
+services:
+  # ==========================================
+  # 1. PostgreSQL Database Service
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskmgmt_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-taskManagementSystem}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${POSTGRES_DB:-taskManagementSystem}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskmgmt_network
+
+  # ==========================================
+  # 2. Redis Cache Service
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: taskmgmt_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskmgmt_network
+
+  # ==========================================
+  # 3. RabbitMQ Message Broker Service
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: taskmgmt_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"     # AMQP Protocol Port
+      - "15672:15672"                     # Management Web UI Port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskmgmt_network
+
+  # ==========================================
+  # 4. Backend Application Service (Spring Boot)
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskmgmt_backend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_URL=${DOCKER_DB_URL:-jdbc:postgresql://postgres:5432/taskManagementSystem}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-update}
+      - SHOW_SQL=${SHOW_SQL:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_EXPIRE=${JWT_ACCESS_EXPIRE:-900}
+      - JWT_REFRESH_EXPIRE=${JWT_REFRESH_EXPIRE:-604800}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - REDIS_HOST=${DOCKER_REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - RABBITMQ_HOST=${DOCKER_RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - taskmgmt_network
+
+# ==========================================
+# Named Volumes for Persistent Data
+# ==========================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+# ==========================================
+# Custom Isolated Network
+# ==========================================
+networks:
+  taskmgmt_network:
+    driver: bridge

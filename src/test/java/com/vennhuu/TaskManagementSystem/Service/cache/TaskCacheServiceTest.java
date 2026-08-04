@@ -26,9 +26,12 @@ import com.vennhuu.TaskManagementSystem.Utils.errors.ResourceNotFoundException;
 @DisplayName("TaskCacheService Unit Tests")
 class TaskCacheServiceTest {
 
-    @Mock private TaskRepository taskRepository;
+    @Mock 
+    private TaskRepository taskRepository;
 
-    @InjectMocks private TaskCacheService taskCacheService;
+    @InjectMocks 
+    
+    private TaskCacheService taskCacheService;
 
     private Task task;
 

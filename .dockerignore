@@ -1,0 +1,28 @@
+# Git & System
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+*.iml
+
+# Build & Target output
+target/
+build/
+*.jar
+*.war
+*.ear
+
+# Logs & Temp files
+*.log
+hs_err_pid*.log
+replay_pid*.log
+.DS_Store
+Thumbs.db
+
+# Documentation & Env
+*.md
+.env
+.env.example
+De bai.docx

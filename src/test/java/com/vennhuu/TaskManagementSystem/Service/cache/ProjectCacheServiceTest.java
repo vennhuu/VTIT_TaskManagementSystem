@@ -24,9 +24,11 @@ import com.vennhuu.TaskManagementSystem.Utils.errors.ResourceNotFoundException;
 @DisplayName("ProjectCacheService Unit Tests")
 class ProjectCacheServiceTest {
 
-    @Mock private ProjectRepository projectRepository;
+    @Mock 
+    private ProjectRepository projectRepository;
 
-    @InjectMocks private ProjectCacheService projectCacheService;
+    @InjectMocks 
+    private ProjectCacheService projectCacheService;
 
     private Project project;
 
