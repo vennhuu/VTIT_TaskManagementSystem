@@ -4,6 +4,10 @@ Hệ thống RESTful API Quản lý Công việc & Dự án được xây dựng
 
 ---
 
+## ERD
+<img width="282" height="255" alt="image" src="https://github.com/user-attachments/assets/d8926218-53d3-4d14-b359-2c27f9027200" />
+
+
 ## Công Nghệ Sử Dụng (Tech Stack)
 
 - **Core**: Java 21, Spring Boot 4.1.0 (Spring Data JPA, Spring Security)
