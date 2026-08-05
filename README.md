@@ -5,8 +5,9 @@ Hệ thống RESTful API Quản lý Công việc & Dự án được xây dựng
 ---
 
 ## ERD
-<img width="282" height="255" alt="image" src="https://github.com/user-attachments/assets/d8926218-53d3-4d14-b359-2c27f9027200" />
+<img width="1677" height="707" alt="image" src="https://github.com/user-attachments/assets/bfd6167e-b806-4532-8c79-8270fcea54de" />
 
+---
 
 ## Công Nghệ Sử Dụng (Tech Stack)
 
