@@ -20,3 +20,6 @@ replay_pid*.log
 *.iml
 .DS_Store
 Thumbs.db
+
+#docker
+.dockerignore
